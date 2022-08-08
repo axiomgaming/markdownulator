@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Markdownulator</title>
+    <script src="math-11.0.1.js"></script>
+    <script src="markdownulator.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        button {
+            border-radius: 5px;
+            color: #fff;
+            background-color: #990000;
+            border-width: 0;
+            padding: 0.25em 1em;
+        }
+
+        #markdown {
+            font-family: monospace;
+            white-space: pre;
+            background-color: #eee;
+            color: black;
+            overflow: auto;
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+    <script>
+        function repeat(symbol, times) {
+            var rval = "";
+            for (var i = 0; i < times; i++) {
+                rval += symbol;
+            }
+            return rval;
+        }
+
+        function justify(item, width) {
+            var pad = width - (""+item).length;
+            var rval = "";
+            if (pad > 0) {
+                if (pad % 2 == 1) {
+                    pad -= 1;
+                    rval += " ";
+                }
+                var rep = repeat(" ", Math.floor(pad/2));
+                rval += rep + item + rep;
+                return rval;
+            } else {
+                // console.log("No padding ("+pad+") for "+item+" to "+width);
+                return item;
+            }
+        }
+
+        function format(value, prec, cutoff) {
+            const fact = Math.pow(10, prec);
+            const val = Math.round(fact * value) / fact;
+            if (cutoff === undefined) return val+"";
+            const s = val >= cutoff ? "**" : "";
+            return s+val+s;
+        }
+
+        function evaluateFunc() {
+            var func = document.getElementById("expr").value;
+            console.log("Evaluating: "+func);
+            var code = math.compile(func);
+            console.log("Compiled: ",code);
+
+            var prec = parseInt(document.getElementById("prec").value);
+            var cutoff = parseFloat(document.getElementById("cutoff").value);
+
+            var xstart = parseFloat(document.getElementById("xvalstart").value);
+            var xend = parseFloat(document.getElementById("xvalend").value);
+            var xstep = parseFloat(document.getElementById("xvalstep").value);
+            console.log("X: "+xstart+" => "+xend+" by "+xstep);
+
+            var ystart = parseFloat(document.getElementById("yvalstart").value);
+            var yend = parseFloat(document.getElementById("yvalend").value);
+            var ystep = parseFloat(document.getElementById("yvalstep").value);
+            console.log("Y: "+ystart+" => "+yend+" by "+ystep);
+
+            try {
+                var maxWidth = 0, maxY = 0;
+                for (var x = xstart; x <= xend; x += xstep) {
+                    for (var y = ystart; y <= yend; y += ystep) {
+                        maxY = Math.max(maxY,format(y,prec).length);
+                        let scope = {
+                            x: x,
+                            y: y
+                        };
+                        var e = code.evaluate(scope);
+                        var v = e !== undefined && e.entries !== undefined ? e.entries[0] : e;
+                        var txt = format(v,prec,cutoff);
+                        maxWidth = Math.max(maxWidth, txt.length);
+                    }
+                }
+                console.log("maxW = "+maxWidth+" maxY = "+maxY);
+                maxWidth += 2;
+                maxY += 2;
+
+                var md = "|" + repeat(" ", maxY) + "|";
+                var hd = "|"+ repeat("-",maxY)+"|";
+                for (var x = xstart; x <= xend; x += xstep) {
+                    md += justify(format(x,prec), maxWidth)+"|";
+                    hd += repeat("-",maxWidth)+"|";
+                }
+                md += "\n"+hd+"\n";
+                for (var y = ystart; y <= yend; y += ystep) {
+                    md += "|"+justify(format(y,prec), maxY)+"|";
+                    for (var x = xstart; x <= xend; x += xstep) {
+                        let scope = {
+                            x: x,
+                            y: y
+                        };
+                        var e = code.evaluate(scope);
+                        var v = e !== undefined && e.entries !== undefined ? e.entries[0] : e;
+                        var txt = format(v,prec,cutoff);
+                        md += justify(txt, maxWidth) +"|";
+                    }
+                    md += "\n";
+                }
+                document.getElementById("markdown").innerText = md;
+            } catch (err) {
+                document.getElementById("markdown").innerText = "ERROR";
+                console.log("Error!",err);
+            }
+        }
+
+        function setup() {
+            console.log("Setting up");
+            document.getElementById("evalbtn").addEventListener('click', function(evt) {
+                evaluateFunc();
+            });
+            document.getElementById("clip").addEventListener("click", function(evt) {
+                let md = document.getElementById('markdown');
+
+                var range = document.createRange();
+                range.selectNode(md);
+                window.getSelection().removeAllRanges(); // clear current selection
+                window.getSelection().addRange(range); // to select text
+                document.execCommand("copy");
+                window.getSelection().removeAllRanges();// to deselect
+                // copyTextarea.focus();
+                // copyTextarea.select();
+                // try {
+                //     let successful = document.execCommand('copy');
+                //     let msg = successful ? 'successful' : 'unsuccessful';
+                //     alert('Copy text command was ' + msg);
+                // } catch(err) {
+                //     alert('Unable to copy');
+                // }
+            });
+            evaluateFunc();
+        };
+
+        document.addEventListener("DOMContentLoaded",  function() {
+            console.log("DOM Content loaded");
+            setup();
+        });
+    </script>
+</head>
+<body>
+<h2>Markdownulator</h2>
+Insert a function of two variables, x and y:<br>
+<textarea id="expr" rows="6" cols="50">
+(((0.98*(((0.5 + y/100)*x/100 + 1))) / (y/100*x/100 + 1)) - 1) * 100
+</textarea>
+<table>
+    <tr>
+        <td>Precision:</td><td><input id="prec" type="number" value="2" min="1" max="10" step="1"></input></td>
+    </tr>
+    <tr>
+        <td>Cutoff (bold values above this):</td><td><input id="cutoff" type="number" value="16"></input></td>
+    </tr>
+    <tr>
+        <td>x start (inclusive):</td><td><input id="xvalstart" type="number" value="0"></input></td>
+    </tr>
+    <tr>
+        <td>x end (inclusive):</td><td><input id="xvalend" type="number" value="100"></input></td>
+    </tr>
+    <tr>
+        <td>x step size:</td><td><input id="xvalstep" type="number" value="5"></input></td>
+    </tr>
+    <tr>
+        <td>y start (inclusive):</td><td><input id="yvalstart" type="number" value="100"></input></td>
+    </tr>
+    <tr>
+        <td>y end (inclusive):</td><td><input id="yvalend" type="number" value="200"></input></td>
+    </tr>
+    <tr>
+        <td>y step size:</td><td><input id="yvalstep" type="number" value="5"></input></td>
+    </tr>
+</table>
+<button id="evalbtn" type="button">Evaluate!</button>
+<button id="clip" type="button" class="copyclip">Copy to Clipboard</button>
+<div id="markdown">
+
+</div>
+</body>
+</html>
