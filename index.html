@@ -66,6 +66,13 @@
             console.log("Evaluating: "+func);
             var code = math.compile(func);
             console.log("Compiled: ",code);
+            var scope = {};
+            try {
+                scope = JSON.parse(document.getElementById("scope").value);
+            } catch (e) {
+                console.log("Error evaluating scope "+rawScope, e);
+                scope = {};
+            }
 
             var prec = parseInt(document.getElementById("prec").value);
             var cutoff = parseFloat(document.getElementById("cutoff").value);
@@ -85,10 +92,13 @@
                 for (var x = xstart; x <= xend; x += xstep) {
                     for (var y = ystart; y <= yend; y += ystep) {
                         maxY = Math.max(maxY,format(y,prec).length);
-                        let scope = {
-                            x: x,
-                            y: y
-                        };
+                        // let scope = {
+                        //     x: x,
+                        //     y: y
+                        // };
+                        scope.x = x;
+                        scope.y = y;
+                        console.log("Scope",scope);
                         var e = code.evaluate(scope);
                         var v = e !== undefined && e.entries !== undefined ? e.entries[0] : e;
                         var txt = format(v,prec,cutoff);
@@ -109,10 +119,12 @@
                 for (var y = ystart; y <= yend; y += ystep) {
                     md += "|"+justify(format(y,prec), maxY)+"|";
                     for (var x = xstart; x <= xend; x += xstep) {
-                        let scope = {
-                            x: x,
-                            y: y
-                        };
+                        // let scope = {
+                        //     x: x,
+                        //     y: y
+                        // };
+                        scope.x = x;
+                        scope.y = y;
                         var e = code.evaluate(scope);
                         var v = e !== undefined && e.entries !== undefined ? e.entries[0] : e;
                         var txt = format(v,prec,cutoff);
@@ -162,10 +174,18 @@
 </head>
 <body>
 <h2>Markdownulator</h2>
+<div>
 Insert a function of two variables, x and y:<br>
 <textarea id="expr" rows="6" cols="50">
-(((0.98*(((0.5 + y/100)*x/100 + 1))) / (y/100*x/100 + 1)) - 1) * 100
+(((0.98*(((0.5 + y - 1)*x + 1))) / ((y-1)*x + 1)) - 1) * 100
 </textarea>
+</div>
+<div>
+Define any add'l variables as JSON scope info (here, a and b):<br>
+<textarea id="scope" rows="6" cols="50">
+{"a": 0.4, "b": 100}
+</textarea>
+</div>
 <table>
     <tr>
         <td>Precision:</td><td><input id="prec" type="number" value="2" min="1" max="10" step="1"></input></td>
@@ -174,22 +194,22 @@ Insert a function of two variables, x and y:<br>
         <td>Cutoff (bold values above this):</td><td><input id="cutoff" type="number" value="16"></input></td>
     </tr>
     <tr>
-        <td>x start (inclusive):</td><td><input id="xvalstart" type="number" value="0"></input></td>
+        <td>x start (inclusive):</td><td><input id="xvalstart" type="number" value="0.4"></input></td>
     </tr>
     <tr>
-        <td>x end (inclusive):</td><td><input id="xvalend" type="number" value="100"></input></td>
+        <td>x end (inclusive):</td><td><input id="xvalend" type="number" value="1.01"></input></td>
     </tr>
     <tr>
-        <td>x step size:</td><td><input id="xvalstep" type="number" value="5"></input></td>
+        <td>x step size:</td><td><input id="xvalstep" type="number" value="0.05"></input></td>
     </tr>
     <tr>
-        <td>y start (inclusive):</td><td><input id="yvalstart" type="number" value="100"></input></td>
+        <td>y start (inclusive):</td><td><input id="yvalstart" type="number" value="2"></input></td>
     </tr>
     <tr>
-        <td>y end (inclusive):</td><td><input id="yvalend" type="number" value="200"></input></td>
+        <td>y end (inclusive):</td><td><input id="yvalend" type="number" value="3.5"></input></td>
     </tr>
     <tr>
-        <td>y step size:</td><td><input id="yvalstep" type="number" value="5"></input></td>
+        <td>y step size:</td><td><input id="yvalstep" type="number" value="0.05"></input></td>
     </tr>
 </table>
 <button id="evalbtn" type="button">Evaluate!</button>
